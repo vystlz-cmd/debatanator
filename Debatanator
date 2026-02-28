@@ -1,0 +1,71 @@
+import time
+from google.genai import Client
+
+# ---------- CONFIG ----------
+API_KEY = "YOUR_KEY_HERE"  # replace with your valid API key
+MODEL_NAME = "gemini-2.5-flash"
+TYPE_SPEED = 0.02  # seconds per character for typewriter effect
+
+# ---------- COLORS ----------
+COLOR_DEBATER1 = "\033[94m"  # Blue
+COLOR_DEBATER2 = "\033[91m"  # Red
+COLOR_MEDIATOR = "\033[92m"  # Green
+COLOR_RESET = "\033[0m"      # Reset to default
+
+# ---------- HELPER ----------
+def typewriter_print(text, color=COLOR_RESET):
+    """Prints text like a typewriter in a given color."""
+    print(color, end="")
+    for c in text:
+        print(c, end="", flush=True)
+        time.sleep(TYPE_SPEED)
+    print(COLOR_RESET + "\n")  # Reset color and add newline
+
+# ---------- INITIALIZE CLIENT ----------
+client = Client(api_key=API_KEY)
+
+# ---------- CHOOSE DEBATE TOPIC ----------
+topic = input("Enter the debate topic: ")
+
+# ---------- CREATE DEBATERS ----------
+debater1 = client.chats.create(model=MODEL_NAME)
+debater2 = client.chats.create(model=MODEL_NAME)
+mediator = client.chats.create(model=MODEL_NAME)
+
+# ---------- OPENING STATEMENTS ----------
+msg1 = debater1.send_message(
+    f"You are debating about: '{topic}'. "
+    "Argue in favor of this topic. You are simply debating against whatever argument is given."
+)
+typewriter_print("Debater 1 (Opening): " + msg1.text, COLOR_DEBATER1)
+
+msg2 = debater2.send_message(
+    f"You are debating about: '{topic}'. "
+    "Argue against this topic. You are simply debating against whatever argument is given."
+)
+typewriter_print("Debater 2 (Opening): " + msg2.text, COLOR_DEBATER2)
+
+# ---------- SECOND TURN ----------
+msg1 = debater1.send_message(
+    f"Respond to this argument: {msg2.text} "
+    "Remember: you are simply debating against it."
+)
+typewriter_print("Debater 1 (Second Turn): " + msg1.text, COLOR_DEBATER1)
+
+msg2 = debater2.send_message(
+    f"Respond to this argument: {msg1.text} "
+    "Remember: you are simply debating against it."
+)
+typewriter_print("Debater 2 (Second Turn): " + msg2.text, COLOR_DEBATER2)
+
+# ---------- MEDIATOR JUDGEMENT ----------
+final_decision_prompt = (
+    "You are a neutral judge for a debate. "
+    f"The topic is: '{topic}'.\n\n"
+    f"Debater 1 final argument:\n{msg1.text}\n\n"
+    f"Debater 2 final argument:\n{msg2.text}\n\n"
+    "Decide which debater wins the debate, and briefly explain your reasoning."
+)
+
+decision = mediator.send_message(final_decision_prompt)
+typewriter_print("Mediator Decision: " + decision.text, COLOR_MEDIATOR)
